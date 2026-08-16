@@ -3,9 +3,10 @@
 Perfil abierto para referenciar acontecimientos **GS1 EPCIS 2.0** desde GOVP sin
 copiar un repositorio EPCIS ni inventar semántica ausente.
 
-> Estado `0.1`: candidato técnico. El mapeo, esquema, contexto y vectores están
-> probados localmente; falta captura y consulta contra una implementación EPCIS
-> independiente para superar la validación nativa.
+> Estado `0.1.1`: candidato técnico reforzado. Los cinco tipos de acontecimiento
+> están probados contra el esquema normativo GS1 EPCIS 2.0.0 fijado por huella;
+> falta captura y consulta contra un repositorio EPCIS independiente para
+> superar la validación nativa.
 
 ## Principio de interoperabilidad
 
@@ -42,12 +43,18 @@ infiere “shipping”, “receiving” u otra semántica.
 
 - `context/govp-epcis-context.jsonld`: términos GOVP añadibles al contexto EPCIS;
 - `schemas/govp-epcis-reference.schema.json`: JSON Schema 2020-12;
-- `vectors/object-event-shipping.jsonld`: vector EPCIS ficticio;
+- `vectors/*.jsonld`: vectores ficticios Object, Aggregation, Transaction,
+  Transformation y Association Event;
 - paquete TypeScript para huella, mapeo, enlace y extracción.
 
 La referencia normativa es [GS1 EPCIS and CBV 2.0](https://ref.gs1.org/standards/epcis/2.0.0/).
 El contexto oficial EPCIS se conserva y el contexto GOVP se añade como segundo
-contexto JSON-LD.
+contexto JSON-LD. Las propiedades enlazadas se serializan como IRI completas
+`https://govp.io/ns/epcis#…`, tal como exige el esquema EPCIS para extensiones.
+
+La validación descarga el esquema inmutable `epcis-json-schema.json` de GS1
+2.0.0 y exige su SHA-256 conocida antes de usarlo. Esto comprueba la forma
+normativa de cada vector, pero no sustituye una captura y consulta reales.
 
 ## Desarrollo
 
@@ -61,8 +68,7 @@ npm pack
 
 1. publicar y recuperar el vector en un repositorio EPCIS 2.0 independiente;
 2. verificar JSON-LD y extensiones en captura y consulta;
-3. probar Object, Aggregation, Transaction, Transformation y Association Event;
-4. documentar límites de autorización del evento original.
+3. documentar límites de autorización del evento original.
 
 Apache-2.0. GS1 y EPCIS son marcas o estándares de GS1; este perfil no está
 certificado por GS1.

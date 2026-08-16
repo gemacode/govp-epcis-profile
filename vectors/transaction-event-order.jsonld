@@ -1,0 +1,17 @@
+{
+  "@context": "https://ref.gs1.org/standards/epcis/epcis-context.jsonld",
+  "type": "TransactionEvent",
+  "eventID": "urn:uuid:42345678-1234-4321-8765-123456789012",
+  "eventTime": "2026-08-16T18:15:00.000Z",
+  "eventTimeZoneOffset": "+02:00",
+  "bizTransactionList": [
+    {
+      "type": "po",
+      "bizTransaction": "urn:epcglobal:cbv:bt:0614141000012:PO123"
+    }
+  ],
+  "epcList": ["urn:epc:id:sgtin:0614141.107346.2017"],
+  "action": "OBSERVE",
+  "bizStep": "shipping",
+  "disposition": "in_transit"
+}

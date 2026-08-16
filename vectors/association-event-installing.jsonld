@@ -1,0 +1,12 @@
+{
+  "@context": "https://ref.gs1.org/standards/epcis/epcis-context.jsonld",
+  "type": "AssociationEvent",
+  "eventID": "urn:uuid:32345678-1234-4321-8765-123456789012",
+  "eventTime": "2026-08-16T18:10:00.000Z",
+  "eventTimeZoneOffset": "+02:00",
+  "parentID": "urn:epc:id:sgln:0614141.07346.1234",
+  "childEPCs": ["urn:epc:id:sgtin:0614141.107346.2017"],
+  "action": "ADD",
+  "bizStep": "installing",
+  "disposition": "active"
+}

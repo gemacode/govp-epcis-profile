@@ -38,7 +38,15 @@ export type GovpEpcisReference = {
   govpVerifyUrl?: string;
 };
 
-const extensionKeys = new Set(['govpCode','govpVerifyUrl','govpEventDigest','govpEventUrl','govpProfileVersion']);
+const GOVP_IRI = {
+  code: 'https://govp.io/ns/epcis#code',
+  verifyUrl: 'https://govp.io/ns/epcis#verifyUrl',
+  eventDigest: 'https://govp.io/ns/epcis#eventDigest',
+  eventUrl: 'https://govp.io/ns/epcis#eventUrl',
+  profileVersion: 'https://govp.io/ns/epcis#profileVersion',
+} as const;
+const legacyExtensionKeys = ['govpCode','govpVerifyUrl','govpEventDigest','govpEventUrl','govpProfileVersion'];
+const extensionKeys = new Set([...Object.values(GOVP_IRI), ...legacyExtensionKeys]);
 
 function originalEvent(event: EpcisEvent): Record<string, unknown> {
   const copy = structuredClone(event) as Record<string, unknown>;
@@ -66,6 +74,12 @@ function absolute(value: string, label: string) {
   return value;
 }
 
+function cbvUri(value: string, prefix: 'BizStep' | 'Disp') {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return value;
+  if (!/^[a-z][a-z0-9_]*$/.test(value)) throw new TypeError(`${prefix} no es un valor CBV válido.`);
+  return `https://ref.gs1.org/cbv/${prefix}-${value}`;
+}
+
 export function epcisEventDigest(event: EpcisEvent) {
   return createHash('sha256').update(stable(originalEvent(event))).digest('hex');
 }
@@ -81,8 +95,8 @@ export function toGovpEpcisReference(event: EpcisEvent, eventUrl: string): GovpE
     eventType: event.type,
     eventTime: new Date(event.eventTime).toISOString(),
     ...(event.action ? { action: event.action } : {}),
-    ...(event.bizStep ? { bizStep: event.bizStep } : {}),
-    ...(event.disposition ? { disposition: event.disposition } : {}),
+    ...(event.bizStep ? { bizStep: cbvUri(event.bizStep, 'BizStep') } : {}),
+    ...(event.disposition ? { disposition: cbvUri(event.disposition, 'Disp') } : {}),
     ...(event.readPoint?.id ? { readPoint: event.readPoint.id } : {}),
     ...(event.bizLocation?.id ? { bizLocation: event.bizLocation.id } : {}),
     eventDigest: epcisEventDigest(event),
@@ -116,11 +130,27 @@ export function attachGovpReference(event: EpcisEvent, reference: GovpEpcisRefer
   if (reference.eventId !== event.eventID || reference.eventDigest !== epcisEventDigest(event)) throw new TypeError('La referencia GOVP no corresponde al evento EPCIS.');
   const contexts = Array.isArray(event['@context']) ? [...event['@context']] : event['@context'] ? [event['@context']] : [];
   if (!contexts.includes(GOVP_EPCIS_CONTEXT)) contexts.push(GOVP_EPCIS_CONTEXT);
-  return { ...structuredClone(event), '@context': contexts, govpCode: reference.govpCode, govpVerifyUrl: reference.govpVerifyUrl, govpEventDigest: reference.eventDigest, govpEventUrl: reference.eventUrl, govpProfileVersion: reference.profileVersion };
+  return {
+    ...structuredClone(event),
+    '@context': contexts,
+    [GOVP_IRI.code]: reference.govpCode,
+    [GOVP_IRI.verifyUrl]: reference.govpVerifyUrl,
+    [GOVP_IRI.eventDigest]: reference.eventDigest,
+    [GOVP_IRI.eventUrl]: reference.eventUrl,
+    [GOVP_IRI.profileVersion]: reference.profileVersion,
+  };
 }
 
 export function extractGovpReference(event: EpcisEvent): GovpEpcisReference {
   const record = event as Record<string, unknown>;
-  if (record.govpProfileVersion !== GOVP_EPCIS_PROFILE_VERSION || typeof record.govpCode !== 'string' || typeof record.govpVerifyUrl !== 'string' || typeof record.govpEventDigest !== 'string' || typeof record.govpEventUrl !== 'string') throw new TypeError('El evento no contiene una referencia GOVP EPCIS completa.');
-  return { ...toGovpEpcisReference(event, record.govpEventUrl), eventDigest: record.govpEventDigest, govpCode: record.govpCode, govpVerifyUrl: record.govpVerifyUrl };
+  const profileVersion=record[GOVP_IRI.profileVersion] ?? record.govpProfileVersion;
+  const govpCode=record[GOVP_IRI.code] ?? record.govpCode;
+  const govpVerifyUrl=record[GOVP_IRI.verifyUrl] ?? record.govpVerifyUrl;
+  const eventDigest=record[GOVP_IRI.eventDigest] ?? record.govpEventDigest;
+  const eventUrl=record[GOVP_IRI.eventUrl] ?? record.govpEventUrl;
+  if (profileVersion !== GOVP_EPCIS_PROFILE_VERSION || typeof govpCode !== 'string' || typeof govpVerifyUrl !== 'string' || typeof eventDigest !== 'string' || typeof eventUrl !== 'string') throw new TypeError('El evento no contiene una referencia GOVP EPCIS completa.');
+  absolute(govpVerifyUrl, 'govpVerifyUrl');
+  const recomputed = toGovpEpcisReference(event, eventUrl);
+  if (eventDigest !== recomputed.eventDigest) throw new TypeError('La huella GOVP no corresponde al evento EPCIS recuperado.');
+  return { ...recomputed, govpCode, govpVerifyUrl };
 }

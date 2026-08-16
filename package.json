@@ -1,6 +1,6 @@
 {
   "name": "@gemacode/govp-epcis-profile",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Open GOVP interoperability profile for GS1 EPCIS 2.0 events.",
   "type": "module",
   "license": "Apache-2.0",

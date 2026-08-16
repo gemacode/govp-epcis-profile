@@ -18,6 +18,13 @@ describe('GOVP EPCIS 2.0 profile',()=>{
     expect(reference.eventDigest).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it('expande valores CBV compactos en la referencia GOVP',()=>{
+    const compact={...event,bizStep:'shipping',disposition:'in_transit'};
+    const reference=toGovpEpcisReference(compact,'https://epcis.example/events/compact');
+    expect(reference.bizStep).toBe('https://ref.gs1.org/cbv/BizStep-shipping');
+    expect(reference.disposition).toBe('https://ref.gs1.org/cbv/Disp-in_transit');
+  });
+
   it('crea una emisión GOVP por referencia y huella',()=>{
     const issuance=toGovpIssuance(event,{eventUrl:'https://epcis.example/events/12345678',issuerName:'Empresa ficticia',validUntil:'2027-08-16T00:00:00Z'});
     expect(issuance.source).toEqual({platform:'epcis',externalId:event.eventID});
@@ -31,6 +38,13 @@ describe('GOVP EPCIS 2.0 profile',()=>{
     const extracted=extractGovpReference(linked);
     expect(extracted).toEqual({...base,govpCode:'GOVP-123',govpVerifyUrl:'https://partners.gemacode.org/exchange/comprobar/GOVP-123'});
     expect(epcisEventDigest(linked)).toBe(base.eventDigest);
+  });
+
+  it('detecta un acontecimiento modificado después de enlazar el GOVP',()=>{
+    const base=toGovpEpcisReference(event,'https://epcis.example/events/12345678');
+    const linked=attachGovpReference(event,{...base,govpCode:'GOVP-123',govpVerifyUrl:'https://partners.gemacode.org/exchange/comprobar/GOVP-123'});
+    const tampered={...linked,disposition:'https://ref.gs1.org/cbv/Disp-damaged'};
+    expect(()=>extractGovpReference(tampered)).toThrow(/huella GOVP no corresponde/);
   });
 
   it('rechaza referencias cruzadas y URIs de transporte inseguras',()=>{
