@@ -1,0 +1,16 @@
+{
+  "@context": "https://ref.gs1.org/standards/epcis/epcis-context.jsonld",
+  "type": "ObjectEvent",
+  "eventID": "urn:uuid:12345678-1234-4321-8765-123456789012",
+  "eventTime": "2026-08-16T18:00:00.000Z",
+  "eventTimeZoneOffset": "+02:00",
+  "epcList": [
+    "urn:epc:id:sgtin:0614141.107346.2018",
+    "urn:epc:id:sgtin:0614141.107346.2017"
+  ],
+  "action": "OBSERVE",
+  "bizStep": "https://ref.gs1.org/cbv/BizStep-shipping",
+  "disposition": "https://ref.gs1.org/cbv/Disp-in_transit",
+  "readPoint": { "id": "urn:epc:id:sgln:0614141.07346.1234" },
+  "bizLocation": { "id": "urn:epc:id:sgln:0614141.00888.0" }
+}

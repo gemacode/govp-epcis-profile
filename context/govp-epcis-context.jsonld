@@ -1,0 +1,10 @@
+{
+  "@context": {
+    "govp": "https://govp.io/ns/epcis#",
+    "govpCode": "govp:code",
+    "govpVerifyUrl": { "@id": "govp:verifyUrl", "@type": "@id" },
+    "govpEventDigest": "govp:eventDigest",
+    "govpEventUrl": { "@id": "govp:eventUrl", "@type": "@id" },
+    "govpProfileVersion": "govp:profileVersion"
+  }
+}

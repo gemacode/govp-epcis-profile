@@ -1,0 +1,9 @@
+name: Error de perfil
+description: Comunica un vector ficticio que reproduzca el problema.
+title: "[Profile] "
+labels: [bug]
+body:
+  - type: textarea
+    id: vector
+    attributes: { label: Vector EPCIS ficticio y resultado esperado }
+    validations: { required: true }

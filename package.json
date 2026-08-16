@@ -1,0 +1,21 @@
+{
+  "name": "@gemacode/govp-epcis-profile",
+  "version": "0.1.0",
+  "description": "Open GOVP interoperability profile for GS1 EPCIS 2.0 events.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/gemacode/govp-epcis-profile.git" },
+  "homepage": "https://github.com/gemacode/govp-epcis-profile#readme",
+  "engines": { "node": ">=20" },
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "context", "schemas", "vectors", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "validate:vectors": "node scripts/validate-vectors.mjs",
+    "check": "npm run typecheck && npm test && npm run build && npm run validate:vectors",
+    "prepack": "npm run check"
+  },
+  "devDependencies": { "ajv": "^8.17.1", "ajv-formats": "^3.0.1", "@types/node": "^24.10.1", "typescript": "~5.9.3", "vitest": "^4.1.0" }
+}

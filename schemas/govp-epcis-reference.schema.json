@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://govp.io/schemas/epcis/2.0/govp-epcis-reference.schema.json",
+  "title": "GOVP EPCIS 2.0 Reference",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profileVersion", "eventId", "eventType", "eventTime", "eventDigest", "eventUrl"],
+  "properties": {
+    "profileVersion": { "const": "0.1" },
+    "eventId": { "type": "string", "format": "uri" },
+    "eventType": { "enum": ["ObjectEvent", "AggregationEvent", "TransactionEvent", "TransformationEvent", "AssociationEvent"] },
+    "eventTime": { "type": "string", "format": "date-time" },
+    "action": { "enum": ["ADD", "OBSERVE", "DELETE"] },
+    "bizStep": { "type": "string", "format": "uri" },
+    "disposition": { "type": "string", "format": "uri" },
+    "readPoint": { "type": "string", "format": "uri" },
+    "bizLocation": { "type": "string", "format": "uri" },
+    "eventDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "eventUrl": { "type": "string", "format": "uri" },
+    "govpCode": { "type": "string" },
+    "govpVerifyUrl": { "type": "string", "format": "uri" }
+  }
+}
