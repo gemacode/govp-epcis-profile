@@ -3,10 +3,9 @@
 Perfil abierto para referenciar acontecimientos **GS1 EPCIS 2.0** desde GOVP sin
 copiar un repositorio EPCIS ni inventar semántica ausente.
 
-> Estado `0.1.1`: candidato técnico reforzado. Los cinco tipos de acontecimiento
-> están probados contra el esquema normativo GS1 EPCIS 2.0.0 fijado por huella;
-> falta captura y consulta contra un repositorio EPCIS independiente para
-> superar la validación nativa.
+> Estado `0.1.2`: perfil interoperable con los cinco tipos de acontecimiento
+> probados contra el esquema normativo GS1 EPCIS 2.0.0 y con una prueba de
+> captura y consulta preparada para un repositorio OpenEPCIS independiente.
 
 ## Principio de interoperabilidad
 
@@ -22,6 +21,11 @@ GOVP conserva:
 No copia listas EPC, cantidades, business transactions ni extensiones al
 payload GOVP. Esos datos permanecen en el repositorio EPCIS original y quedan
 protegidos por la huella.
+
+La representación estable excluye `@context` y `recordTime`: el primero es una
+instrucción de serialización JSON-LD y el segundo puede ser asignado por el
+repositorio durante la captura. El resto del contenido empresarial sí forma
+parte de la huella.
 
 ## Mapeo GOVP
 
@@ -49,8 +53,12 @@ infiere “shipping”, “receiving” u otra semántica.
 
 La referencia normativa es [GS1 EPCIS and CBV 2.0](https://ref.gs1.org/standards/epcis/2.0.0/).
 El contexto oficial EPCIS se conserva y el contexto GOVP se añade como segundo
-contexto JSON-LD. Las propiedades enlazadas se serializan como IRI completas
-`https://govp.io/ns/epcis#…`, tal como exige el esquema EPCIS para extensiones.
+contexto JSON-LD. Las propiedades enlazadas se serializan con el prefijo
+`govp:*`, que el contexto expande al namespace
+`https://govp.io/ns/epcis#`. El lector conserva compatibilidad con la primera
+serialización basada en IRI absolutas. Se incluye además la declaración de
+prefijo inline para repositorios que, por seguridad, no descargan contextos
+remotos durante la captura.
 
 La validación descarga el esquema inmutable `epcis-json-schema.json` de GS1
 2.0.0 y exige su SHA-256 conocida antes de usarlo. Esto comprueba la forma
@@ -64,11 +72,41 @@ npm run check
 npm pack
 ```
 
-## Pendiente para conformidad nativa
+El contexto JSON-LD se publica de forma estable en
+`https://downloads.govp.io/contexts/epcis/0.1/govp-epcis-context.jsonld`.
 
-1. publicar y recuperar el vector en un repositorio EPCIS 2.0 independiente;
-2. verificar JSON-LD y extensiones en captura y consulta;
-3. documentar límites de autorización del evento original.
+## Aceptación nativa OpenEPCIS
+
+Con un repositorio OpenEPCIS 2.0 disponible, registra el namespace GOVP y
+ejecuta:
+
+```bash
+OPEN_EPCIS_URL=http://localhost:8080 npm run validate:openepcis
+```
+
+El runner captura un documento con los cinco tipos de evento enlazados, espera
+la finalización asíncrona, recupera cada `eventID` mediante la API EPCIS y
+comprueba que la extensión, la URL original y la huella GOVP sobreviven sin
+alteraciones.
+
+También se incluye una aceptación portable para repositorios EPCIS 2.0 con
+Basic Auth. Usa credenciales sintéticas exclusivas de cada ejecución:
+
+```bash
+EPCIS_REPOSITORY_URL=https://fastnt-dev.azurewebsites.net \
+EPCIS_BASIC_AUTH=usuario_sintetico:contraseña_sintetica \
+npm run validate:repository
+```
+
+Además de captura y consulta, esta prueba exige que otras credenciales no puedan
+recuperar el evento.
+
+## Límite de autorización
+
+El perfil transporta una URL HTTPS del evento original, pero no transporta sus
+credenciales. El repositorio EPCIS debe aplicar su propio OAuth, mTLS o control
+de acceso; quien comprueba un GOVP solo puede resolver esa URL si también está
+autorizado por el propietario EPCIS.
 
 Apache-2.0. GS1 y EPCIS son marcas o estándares de GS1; este perfil no está
 certificado por GS1.

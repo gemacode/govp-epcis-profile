@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 
 export const GOVP_EPCIS_PROFILE_VERSION = '0.1' as const;
-export const GOVP_EPCIS_CONTEXT = 'https://govp.io/contexts/epcis/0.1/govp-epcis-context.jsonld';
+export const GOVP_EPCIS_CONTEXT = 'https://downloads.govp.io/contexts/epcis/0.1/govp-epcis-context.jsonld';
+export const GOVP_EPCIS_NAMESPACE = 'https://govp.io/ns/epcis#';
 
 export type EpcisEventType = 'ObjectEvent' | 'AggregationEvent' | 'TransactionEvent' | 'TransformationEvent' | 'AssociationEvent';
 export type EpcisEvent = {
@@ -45,16 +46,29 @@ const GOVP_IRI = {
   eventUrl: 'https://govp.io/ns/epcis#eventUrl',
   profileVersion: 'https://govp.io/ns/epcis#profileVersion',
 } as const;
+const GOVP_KEY = {
+  code: 'govp:code',
+  verifyUrl: 'govp:verifyUrl',
+  eventDigest: 'govp:eventDigest',
+  eventUrl: 'govp:eventUrl',
+  profileVersion: 'govp:profileVersion',
+} as const;
 const legacyExtensionKeys = ['govpCode','govpVerifyUrl','govpEventDigest','govpEventUrl','govpProfileVersion'];
-const extensionKeys = new Set([...Object.values(GOVP_IRI), ...legacyExtensionKeys]);
+const extensionKeys = new Set([...Object.values(GOVP_KEY), ...Object.values(GOVP_IRI), ...legacyExtensionKeys]);
+
+function govpPrefixes(context: EpcisEvent['@context']): string[] {
+  const contexts=Array.isArray(context)?context:[context];
+  return contexts.flatMap((item)=>typeof item==='object'&&item!==null
+    ? Object.entries(item).filter(([,value])=>value===GOVP_EPCIS_NAMESPACE).map(([prefix])=>prefix)
+    : []);
+}
 
 function originalEvent(event: EpcisEvent): Record<string, unknown> {
   const copy = structuredClone(event) as Record<string, unknown>;
   for (const key of extensionKeys) delete copy[key];
-  if (Array.isArray(copy['@context'])) {
-    const contexts = copy['@context'].filter((item) => item !== GOVP_EPCIS_CONTEXT);
-    copy['@context'] = contexts.length === 1 ? contexts[0] : contexts;
-  }
+  for(const prefix of govpPrefixes(event['@context']))for(const suffix of ['code','verifyUrl','eventDigest','eventUrl','profileVersion'])delete copy[`${prefix}:${suffix}`];
+  delete copy['@context'];
+  delete copy.recordTime;
   for (const key of ['epcList','childEPCs','inputEPCList','outputEPCList']) {
     if (Array.isArray(copy[key])) copy[key] = [...copy[key] as string[]].sort();
   }
@@ -130,24 +144,27 @@ export function attachGovpReference(event: EpcisEvent, reference: GovpEpcisRefer
   if (reference.eventId !== event.eventID || reference.eventDigest !== epcisEventDigest(event)) throw new TypeError('La referencia GOVP no corresponde al evento EPCIS.');
   const contexts = Array.isArray(event['@context']) ? [...event['@context']] : event['@context'] ? [event['@context']] : [];
   if (!contexts.includes(GOVP_EPCIS_CONTEXT)) contexts.push(GOVP_EPCIS_CONTEXT);
+  if (!contexts.some((item) => typeof item === 'object' && item !== null && item.govp === GOVP_EPCIS_NAMESPACE)) contexts.push({ govp: GOVP_EPCIS_NAMESPACE });
   return {
     ...structuredClone(event),
     '@context': contexts,
-    [GOVP_IRI.code]: reference.govpCode,
-    [GOVP_IRI.verifyUrl]: reference.govpVerifyUrl,
-    [GOVP_IRI.eventDigest]: reference.eventDigest,
-    [GOVP_IRI.eventUrl]: reference.eventUrl,
-    [GOVP_IRI.profileVersion]: reference.profileVersion,
+    [GOVP_KEY.code]: reference.govpCode,
+    [GOVP_KEY.verifyUrl]: reference.govpVerifyUrl,
+    [GOVP_KEY.eventDigest]: reference.eventDigest,
+    [GOVP_KEY.eventUrl]: reference.eventUrl,
+    [GOVP_KEY.profileVersion]: reference.profileVersion,
   };
 }
 
 export function extractGovpReference(event: EpcisEvent): GovpEpcisReference {
   const record = event as Record<string, unknown>;
-  const profileVersion=record[GOVP_IRI.profileVersion] ?? record.govpProfileVersion;
-  const govpCode=record[GOVP_IRI.code] ?? record.govpCode;
-  const govpVerifyUrl=record[GOVP_IRI.verifyUrl] ?? record.govpVerifyUrl;
-  const eventDigest=record[GOVP_IRI.eventDigest] ?? record.govpEventDigest;
-  const eventUrl=record[GOVP_IRI.eventUrl] ?? record.govpEventUrl;
+  const prefixes=govpPrefixes(event['@context']);
+  const contextual=(suffix:string)=>prefixes.map((prefix)=>record[`${prefix}:${suffix}`]).find((value)=>value!==undefined);
+  const profileVersion=record[GOVP_KEY.profileVersion] ?? record[GOVP_IRI.profileVersion] ?? contextual('profileVersion') ?? record.govpProfileVersion;
+  const govpCode=record[GOVP_KEY.code] ?? record[GOVP_IRI.code] ?? contextual('code') ?? record.govpCode;
+  const govpVerifyUrl=record[GOVP_KEY.verifyUrl] ?? record[GOVP_IRI.verifyUrl] ?? contextual('verifyUrl') ?? record.govpVerifyUrl;
+  const eventDigest=record[GOVP_KEY.eventDigest] ?? record[GOVP_IRI.eventDigest] ?? contextual('eventDigest') ?? record.govpEventDigest;
+  const eventUrl=record[GOVP_KEY.eventUrl] ?? record[GOVP_IRI.eventUrl] ?? contextual('eventUrl') ?? record.govpEventUrl;
   if (profileVersion !== GOVP_EPCIS_PROFILE_VERSION || typeof govpCode !== 'string' || typeof govpVerifyUrl !== 'string' || typeof eventDigest !== 'string' || typeof eventUrl !== 'string') throw new TypeError('El evento no contiene una referencia GOVP EPCIS completa.');
   absolute(govpVerifyUrl, 'govpVerifyUrl');
   const recomputed = toGovpEpcisReference(event, eventUrl);
