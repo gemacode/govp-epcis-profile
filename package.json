@@ -1,6 +1,6 @@
 {
   "name": "@gemacode/govp-epcis-profile",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Open GOVP interoperability profile for GS1 EPCIS 2.0 events.",
   "type": "module",
   "license": "Apache-2.0",
@@ -14,6 +14,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "validate:vectors": "node scripts/validate-vectors.mjs",
+    "validate:openepcis": "node scripts/validate-openepcis.mjs",
+    "validate:repository": "node scripts/validate-epcis-repository.mjs",
     "check": "npm run typecheck && npm test && npm run build && npm run validate:vectors",
     "prepack": "npm run check"
   },

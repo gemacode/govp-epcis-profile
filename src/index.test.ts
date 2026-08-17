@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { attachGovpReference, epcisEventDigest, extractGovpReference, toGovpEpcisReference, toGovpIssuance, type EpcisEvent } from './index.js';
+import { attachGovpReference, epcisEventDigest, extractGovpReference, GOVP_EPCIS_CONTEXT, GOVP_EPCIS_NAMESPACE, toGovpEpcisReference, toGovpIssuance, type EpcisEvent } from './index.js';
 
 const event=JSON.parse(readFileSync(new URL('../vectors/object-event-shipping.jsonld',import.meta.url),'utf8')) as EpcisEvent;
 
 describe('GOVP EPCIS 2.0 profile',()=>{
+  it('usa el contexto JSON-LD público de la Biblioteca Universal',()=>{
+    expect(GOVP_EPCIS_CONTEXT).toBe('https://downloads.govp.io/contexts/epcis/0.1/govp-epcis-context.jsonld');
+  });
+
   it('normaliza listas EPC sin depender de su orden',()=>{
     const reversed=structuredClone(event);reversed.epcList=[...(reversed.epcList??[])].reverse();
     expect(epcisEventDigest(reversed)).toBe(epcisEventDigest(event));
     reversed.epcList?.push('urn:epc:id:sgtin:0614141.107346.9999');
     expect(epcisEventDigest(reversed)).not.toBe(epcisEventDigest(event));
+  });
+
+  it('conserva la huella tras normalizar contexto y añadir recordTime',()=>{
+    const captured={...event,'@context':'https://ref.gs1.org/standards/epcis/2.0.0/epcis-context.jsonld',recordTime:'2026-08-17T04:58:00Z'};
+    expect(epcisEventDigest(captured)).toBe(epcisEventDigest(event));
   });
 
   it('mapea solo semántica EPCIS presente',()=>{
@@ -38,6 +47,34 @@ describe('GOVP EPCIS 2.0 profile',()=>{
     const extracted=extractGovpReference(linked);
     expect(extracted).toEqual({...base,govpCode:'GOVP-123',govpVerifyUrl:'https://partners.gemacode.org/exchange/comprobar/GOVP-123'});
     expect(epcisEventDigest(linked)).toBe(base.eventDigest);
+    expect(linked['govp:code']).toBe('GOVP-123');
+    expect(linked['https://govp.io/ns/epcis#code']).toBeUndefined();
+    expect(linked['@context']).toContainEqual({govp:GOVP_EPCIS_NAMESPACE});
+  });
+
+  it('lee la serialización absoluta anterior sin romper compatibilidad',()=>{
+    const base=toGovpEpcisReference(event,'https://epcis.example/events/12345678');
+    const linked=attachGovpReference(event,{...base,govpCode:'GOVP-123',govpVerifyUrl:'https://partners.gemacode.org/exchange/comprobar/GOVP-123'});
+    const previous={...linked,
+      'https://govp.io/ns/epcis#code':linked['govp:code'],
+      'https://govp.io/ns/epcis#verifyUrl':linked['govp:verifyUrl'],
+      'https://govp.io/ns/epcis#eventDigest':linked['govp:eventDigest'],
+      'https://govp.io/ns/epcis#eventUrl':linked['govp:eventUrl'],
+      'https://govp.io/ns/epcis#profileVersion':linked['govp:profileVersion'],
+    };
+    for(const key of ['govp:code','govp:verifyUrl','govp:eventDigest','govp:eventUrl','govp:profileVersion'])delete previous[key];
+    expect(extractGovpReference(previous)).toEqual({...base,govpCode:'GOVP-123',govpVerifyUrl:'https://partners.gemacode.org/exchange/comprobar/GOVP-123'});
+  });
+
+  it('resuelve un prefijo renombrado por el repositorio desde JSON-LD',()=>{
+    const base=toGovpEpcisReference(event,'https://epcis.example/events/12345678');
+    const linked=attachGovpReference(event,{...base,govpCode:'GOVP-123',govpVerifyUrl:'https://partners.gemacode.org/exchange/comprobar/GOVP-123'});
+    const renamed={...linked,'@context':[event['@context'],{ext0:GOVP_EPCIS_NAMESPACE}]};
+    for(const suffix of ['code','verifyUrl','eventDigest','eventUrl','profileVersion']){
+      renamed[`ext0:${suffix}`]=renamed[`govp:${suffix}`];
+      delete renamed[`govp:${suffix}`];
+    }
+    expect(extractGovpReference(renamed)).toEqual({...base,govpCode:'GOVP-123',govpVerifyUrl:'https://partners.gemacode.org/exchange/comprobar/GOVP-123'});
   });
 
   it('detecta un acontecimiento modificado después de enlazar el GOVP',()=>{
